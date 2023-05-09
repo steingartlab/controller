@@ -50,7 +50,7 @@ class Controller:
 
         while self.time_elapsed < settings.duration and not self.pill.wait(settings.interval):
             try:
-                waveform: dict[str, list[float]] = pulse(picoscope=picoscope)
+                waveform: dict[str, list[float]] = _pulse(picoscope=picoscope)
                 row_id = self.save(waveform=waveform)
                 logging.info(f'Pulse completed. Row id: {row_id}')
 
@@ -58,6 +58,14 @@ class Controller:
                 logging.error(e)
 
         self._status = Status(2)
+
+    def pulse(self) -> dict[str, list[float]]:
+        """Single pulse."""
+        
+        picoscope: Picoscope = Picoscope(params=settings.pico)
+        
+        return _pulse(picoscope=Picoscope)
+
 
     def save(self, waveform: dict[str, list[float]]) -> int:
         timestamp: dict[str, float] = {'time': time()}
@@ -72,7 +80,7 @@ class Controller:
         self.pill.set()
 
 
-def pulse(picoscope: Picoscope) -> dict[str, list[float]]:
+def _pulse(picoscope: Picoscope) -> dict[str, list[float]]:
     """Wrapper."""
     pulser = Pulser()
     pulser.turn_on()

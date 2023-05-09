@@ -5,7 +5,7 @@ import threading
 import flask
 from werkzeug.exceptions import BadRequest
 
-from controller import controller, utils
+from controller import controller, instruments, utils
 
 
 log_filename = "logs/logs.log"
@@ -35,8 +35,20 @@ def status():
     return controller_.status
 
 
-@app.route('/run', methods=['POST'])
+@app.route('/pulse', methods=['POST'])
 def pulse():
+    incoming_settings: dict[str, str] = flask.request.values.to_dict()
+    pico_params: instruments.PicoParams = dataclass_from_dict(
+        dataclass_=instruments.PicoParams,
+        dict_=incoming_settings
+    )
+    waveform = controller_.pulse()
+
+    return waveform
+
+
+@app.route('/start', methods=['POST'])
+def start():
     incoming_settings: dict[str, str] = flask.request.values.to_dict()
     settings: controller.Settings = utils.dataclass_from_dict(
         dataclass_=controller.Settings, 
@@ -55,4 +67,4 @@ def handle_bad_request(e):
 
 
 if __name__ == '__main__':
-    app.run(port=PORT, host="0.0.0.0", debug=True)
+    app.run(port=PORT, host="0.0.0.0", debug=False)
