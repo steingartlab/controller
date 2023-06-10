@@ -5,7 +5,9 @@ import threading
 import flask
 from werkzeug.exceptions import BadRequest
 
-from controller import controller, instruments, utils
+import config
+from controller import controller
+from controller.picoscope import PicoParams
 
 
 log_filename = "logs/logs.log"
@@ -17,54 +19,62 @@ logging.basicConfig(
 )
 
 app: flask.Flask = flask.Flask(__name__)
-PORT: int = 5002
-
 controller_: controller.Controller = controller.Controller()
 
-@app.route('/')
-def hello_world():
-    """
-    Returns:
-        Str: Status message
-    """
-    return 'Siberiaaaa the place to be'
+def configure_routes(app):
+
+    @app.route('/')
+    def hello_world():
+        """
+        Returns:
+            Str: Status message
+        """
+        return f'Controller is up. Status: {status()}'
 
 
-@app.route('/status')
-def status():
-    return controller_.status
+    @app.route('/last_updated')
+    def last_updated():
+        return str(controller_.last_updated)
 
 
-@app.route('/pulse', methods=['POST'])
-def pulse():
-    incoming_settings: dict[str, str] = flask.request.values.to_dict()
-    pico_params: instruments.PicoParams = dataclass_from_dict(
-        dataclass_=instruments.PicoParams,
-        dict_=incoming_settings
-    )
-    waveform = controller_.pulse()
+    @app.route('/pulse', methods=['POST'])
+    def pulse():
+        incoming = flask.request.values.to_dict()
+        pico_params: PicoParams = PicoParams(**incoming)
 
-    return waveform
+        return controller_.pulse(pico_params)
 
 
-@app.route('/start', methods=['POST'])
-def start():
-    incoming_settings: dict[str, str] = flask.request.values.to_dict()
-    settings: controller.Settings = utils.dataclass_from_dict(
-        dataclass_=controller.Settings, 
-        dict_=incoming_settings
-    )
-    settings.set_pico()
-    thread = threading.Thread(target=controller_.loop, args=(settings))
-    thread.start()
+    @app.route('/start', methods=['POST'])
+    def start():
+        incoming = flask.request.values.to_dict()
+        exp_settings = controller.Settings(**incoming)
+        pico_params = PicoParams(**incoming)
+        thread = threading.Thread(
+            target=controller_.start,
+            args=(exp_settings, pico_params)
+        )
+        thread.start()
 
-    return 'Experiment started'
+        return status()
 
 
-@app.errorhandler(BadRequest)
-def handle_bad_request(e):
-    return '', 404
+    @app.route('/status')
+    def status():
+        return controller_.status
+
+
+    @app.errorhandler(BadRequest)
+    def handle_bad_request(e):
+        return '', 404
+
+
+configure_routes(app)
 
 
 if __name__ == '__main__':
-    app.run(port=PORT, host="0.0.0.0", debug=False)
+    app.run(
+        port=config.server['PORT'],
+        host=config.server['IP'],
+        debug=False
+    )

@@ -60,3 +60,5 @@ class Database:
 
         return self.cursor.lastrowid
         
+    def last_updated(self) -> str:
+        pass
