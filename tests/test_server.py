@@ -12,6 +12,7 @@ from controller import picoscope
 pulsing_params = picoscope.PicoParams(10, 1, 10)
 INITIAL_STATUS = 'Controller is up. Status: not_started'
 
+
 @pytest.fixture
 def client():
     app = flask.Flask(__name__)

@@ -20,8 +20,10 @@ class PicoParams:
     """
 
     delay: int
-    voltage_range: float
     duration: int
+    voltage_range: float
+
+    avg_num: float = 64
 
 
 def callback(pico_params: PicoParams) -> Dict[str, List[float]]:
@@ -43,5 +45,3 @@ def callback(pico_params: PicoParams) -> Dict[str, List[float]]:
     response = requests.post(f'{url}/get_wave', data=asdict(pico_params)).text
 
     return json.loads(response)
-
-

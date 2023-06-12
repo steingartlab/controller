@@ -161,3 +161,6 @@ cython_debug/
 
 
 config.py
+acoustics
+dummy_folder
+logs

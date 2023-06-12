@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import threading
@@ -7,8 +8,6 @@ from werkzeug.exceptions import BadRequest
 
 import config
 from controller import controller
-from controller.picoscope import PicoParams
-
 
 log_filename = "logs/logs.log"
 os.makedirs(os.path.dirname(log_filename), exist_ok=True)
@@ -39,28 +38,30 @@ def configure_routes(app):
 
     @app.route('/pulse', methods=['POST'])
     def pulse():
-        incoming = flask.request.values.to_dict()
-        pico_params: PicoParams = PicoParams(**incoming)
+        waveform = controller.pulse(incoming=flask.request.values.to_dict())
+        print(waveform)
 
-        return controller_.pulse(pico_params)
+        return json.dumps(waveform)
 
 
     @app.route('/start', methods=['POST'])
     def start():
-        incoming = flask.request.values.to_dict()
-        exp_settings = controller.Settings(**incoming)
-        pico_params = PicoParams(**incoming)
-        thread = threading.Thread(
-            target=controller_.start,
-            args=(exp_settings, pico_params)
+        controller.start_thread(
+            controller_=controller_, incoming=flask.request.values.to_dict()
         )
-        thread.start()
 
         return status()
 
 
     @app.route('/status')
     def status():
+        return controller_.status
+
+
+    @app.route('/stop')
+    def stop():
+        controller_.stop()
+
         return controller_.status
 
 
@@ -74,7 +75,7 @@ configure_routes(app)
 
 if __name__ == '__main__':
     app.run(
-        port=config.server['PORT'],
-        host=config.server['IP'],
+        port=config.server['port'],
+        host=config.server['ip'],
         debug=False
     )
