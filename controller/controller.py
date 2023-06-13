@@ -3,7 +3,7 @@ from enum import auto
 import logging
 import os
 import threading
-from time import time
+from time import sleep, time
 from typing import Dict, Union
 
 from controller import picoscope, pulser, utils
@@ -71,6 +71,7 @@ class Controller:
             except Exception as e:
                 logging.error(e)
                 self._status = 3
+                sleep(10)
 
     def start(self, exp_settings: ExpSettings, pico_params: picoscope.PicoParams) -> None: 
         self.database: Database = Database(db_filename=exp_settings.exp_id)    
