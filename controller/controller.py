@@ -45,11 +45,11 @@ class Controller:
     
     @property
     def status(self) -> str:
-        return self._status
+        return self._status.value
 
     @status.setter
     def status(self, num):
-        self._status = num
+        self._status = Status(num)
 
     @property
     def last_updated(self) -> str:
@@ -66,18 +66,18 @@ class Controller:
                 waveform: dict[str, list[float]] = _pulse(pico_params=pico_params)
                 row_id = self.save(waveform=waveform)
                 logging.info(f'Pulse completed. Row id: {row_id}')
-                self._status = 1
+                self.status = 1
 
             except Exception as e:
                 logging.error(e)
-                self._status = 3
+                self.status = 3
                 sleep(10)
 
     def start(self, exp_settings: ExpSettings, pico_params: picoscope.PicoParams) -> None: 
         self.database: Database = Database(db_filename=exp_settings.exp_id)    
-        self._status = 1
+        self.status = 1
         self._loop(exp_settings=exp_settings, pico_params=pico_params)
-        self._status = 2
+        self.status = 2
 
     def save(self, waveform: dict[str, list[float]]) -> int:
         timestamp: dict[str, float] = {'time': time()}
@@ -90,7 +90,7 @@ class Controller:
         """Manually stop experiment."""
         self.pill.set()
         self.pill = threading.Event()
-        self._status = 2
+        self.status = 2
 
 def _pulse(pico_params: picoscope.PicoParams) -> dict[str, list[float]]:
     """."""
