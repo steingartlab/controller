@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 from enum import auto
+import logging
+import os
 import threading
 from time import time
 from typing import Dict, Union
@@ -8,11 +10,24 @@ from controller import picoscope, pulser, utils
 from controller.database import Database
 
 
+log_filename = "logs/logs.log"
+os.makedirs(os.path.dirname(log_filename), exist_ok=True)
+logging.basicConfig(
+    filename=log_filename,
+    level=logging.INFO,
+    format='%(asctime)s: %(message)s'
+)
+
+
 @dataclass
 class ExpSettings:
-    duration: float  # zh
+    exp_duration_h: float  # h
     interval: float  # s
     exp_id: str
+
+    @property
+    def exp_duration_s(self):
+        return self.exp_duration_h * 3600
 
 
 class Status(utils.ZeroBasedAutoEnum):
@@ -30,7 +45,7 @@ class Controller:
     
     @property
     def status(self) -> str:
-        return self._status.name
+        return self._status
 
     @status.setter
     def status(self, num):
@@ -45,8 +60,8 @@ class Controller:
         return time() - self.start
 
     def _loop(self, exp_settings: ExpSettings, pico_params: picoscope.PicoParams):
-        
-        while self.time_elapsed < settings.duration and not self.pill.wait(exp_settings.interval):
+
+        while self.time_elapsed < exp_settings.exp_duration_s and not self.pill.wait(exp_settings.interval):
             try:
                 waveform: dict[str, list[float]] = _pulse(pico_params=pico_params)
                 row_id = self.save(waveform=waveform)
@@ -58,7 +73,6 @@ class Controller:
                 self._status = 3
 
     def start(self, exp_settings: ExpSettings, pico_params: picoscope.PicoParams) -> None: 
-        picoscope: Picoscope = Picoscope(params=pico_params)
         self.database: Database = Database(db_filename=exp_settings.exp_id)    
         self._status = 1
         self._loop(exp_settings=exp_settings, pico_params=pico_params)
@@ -74,7 +88,8 @@ class Controller:
     def stop(self):
         """Manually stop experiment."""
         self.pill.set()
-
+        self.pill = threading.Event()
+        self._status = 2
 
 def _pulse(pico_params: picoscope.PicoParams) -> dict[str, list[float]]:
     """."""
@@ -96,17 +111,18 @@ def pulse(incoming: dict[str, str]) -> dict[str, list[float]]:
 
 
 def start_thread(controller_: Controller, incoming: dict[str, str]) -> None:
-    exp_settings: controller.Settings = utils.dataclass_from_dict(
-        dataclass_=controller.Settings,
+    exp_settings: ExpSettings = utils.dataclass_from_dict(
+        dataclass_=ExpSettings,
         dict_=incoming
     )
+    exp_settings.exp_duration_h = float(exp_settings.exp_duration_h)  # TODO: make more elegant
+    exp_settings.interval = float(exp_settings.interval)  # TODO: make more elegant
     pico_params: PicoParams = utils.dataclass_from_dict(
         dataclass_=picoscope.PicoParams,
         dict_=incoming
     )
-
     thread = threading.Thread(
-        target=controller_.start,
-        args=(exp_settings, pico_params)
+        target=Controller.start,
+        args=(controller_, exp_settings, pico_params)
     )
     thread.start()

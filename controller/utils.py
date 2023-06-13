@@ -35,7 +35,7 @@ def dataclass_from_dict(dataclass_: Type, dict_: dict) -> Type:
 
 
 def last_folder_update(folder_path: str = 'acoustics') -> float:
-    max_modification_time = 0.0
+    max_modification_time: float = -1.0
 
     for file_path in glob(f'{folder_path}/*'):
         if not os.path.isfile(file_path):   

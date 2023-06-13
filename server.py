@@ -55,14 +55,14 @@ def configure_routes(app):
 
     @app.route('/status')
     def status():
-        return controller_.status
+        return str(controller_.status)
 
 
     @app.route('/stop')
     def stop():
         controller_.stop()
 
-        return controller_.status
+        return status()
 
 
     @app.errorhandler(BadRequest)

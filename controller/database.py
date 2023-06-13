@@ -59,6 +59,3 @@ class Database:
         self.connection.commit()
 
         return self.cursor.lastrowid
-        
-    def last_updated(self) -> str:
-        pass
