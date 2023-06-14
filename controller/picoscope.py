@@ -1,3 +1,9 @@
+"""Methods and data objects for interfacing with picoscope,
+oscilloscopes from picotech.
+
+See https://github.com/steingartlab/picoscope.
+"""
+
 from dataclasses import asdict, dataclass
 import json
 from typing import Dict, List
@@ -7,6 +13,7 @@ import requests
 import config
 from controller.utils import make_url
 
+
 IP = config.picoscope['ip']
 PORT = config.picoscope['port']
 
@@ -15,8 +22,6 @@ PORT = config.picoscope['port']
 class PicoParams:
     """All the params that should should be passed
     to a pulsing picoscope, no more, no less.
-
-    Change at your leisure.
     """
 
     delay: int
@@ -42,6 +47,9 @@ def callback(pico_params: PicoParams) -> Dict[str, List[float]]:
     """
 
     url = make_url(IP, PORT)
-    response = requests.post(f'{url}/get_wave', data=asdict(pico_params)).text
+    response = requests.post(
+        f'{url}/get_wave',
+        data=asdict(pico_params)
+    ).text
 
     return json.loads(response)

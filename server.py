@@ -1,33 +1,24 @@
 import json
-import logging
-import os
-import threading
+from time import sleep
 
 import flask
 from werkzeug.exceptions import BadRequest
 
+# Yes, I know storing config in a python module is suboptimal,
+# but if someone can edit my config.py that means I have better fish to fry.
 import config
-from controller import controller
+from controller import controller, logger
 
-log_filename = "logs/logs.log"
-os.makedirs(os.path.dirname(log_filename), exist_ok=True)
-logging.basicConfig(
-    filename=log_filename,
-    level=logging.INFO,
-    format='%(asctime)s: %(message)s'
-)
 
+logger.configure()
 app: flask.Flask = flask.Flask(__name__)
 controller_: controller.Controller = controller.Controller()
+
 
 def configure_routes(app):
 
     @app.route('/')
     def hello_world():
-        """
-        Returns:
-            Str: Status message
-        """
         return f'Controller is up. Status: {status()}'
 
 
@@ -39,7 +30,6 @@ def configure_routes(app):
     @app.route('/pulse', methods=['POST'])
     def pulse():
         waveform = controller.pulse(incoming=flask.request.values.to_dict())
-        print(waveform)
 
         return json.dumps(waveform)
 
@@ -47,22 +37,24 @@ def configure_routes(app):
     @app.route('/start', methods=['POST'])
     def start():
         controller.start_thread(
-            controller_=controller_, incoming=flask.request.values.to_dict()
+            controller_=controller_,
+            incoming=flask.request.values.to_dict()
         )
+        sleep(2)  # To ensure correct status message is returned
 
         return status()
 
 
     @app.route('/status')
     def status():
-        return controller_.status
+        return str(controller_.status)
 
 
     @app.route('/stop')
     def stop():
         controller_.stop()
 
-        return controller_.status
+        return status()
 
 
     @app.errorhandler(BadRequest)
