@@ -35,6 +35,16 @@ def dataclass_from_dict(dataclass_: Type, dict_: dict) -> Type:
 
 
 def last_folder_update(folder_path: str = 'acoustics') -> float:
+    """Check when folder was last updated.
+    
+    Args:
+        folder_path (str, optional): Folder location.
+            Defaults to 'acoustics' (don't want to hardcode bc tests).
+
+    Returns:
+        float: Unix timestamp of last update.
+    """
+    
     max_modification_time: float = -1.0
 
     for file_path in glob(f'{folder_path}/*'):
@@ -52,4 +62,13 @@ def last_folder_update(folder_path: str = 'acoustics') -> float:
 
 
 def make_url(ip_address: str, port: int) -> str:
+    """Parse url from its constituents.
+    
+    Args:
+        ip_address (str): Format 192.168.0.1.
+        port (int): Format 8001.
+
+    Returns:
+        str: Formatted url.
+    """
     return f'http://{ip_address}:{port}'
