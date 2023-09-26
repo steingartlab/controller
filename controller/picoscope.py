@@ -10,12 +10,15 @@ from typing import Dict, List
 
 import requests
 
-import config
-from controller.utils import make_url
+from controller import utils
 
 
-IP = config.picoscope['ip']
-PORT = config.picoscope['port']
+with open('docker.json', 'r') as json_file:
+    containers = json.load(json_file)
+
+
+IP = utils.make_ip(containers['picoscope']['ip'])
+PORT = containers['picoscope']['port']
 
 
 @dataclass
@@ -46,7 +49,7 @@ def callback(pico_params: PicoParams) -> Dict[str, List[float]]:
             acoustics pulse data.
     """
 
-    url = make_url(IP, PORT)
+    url = utils.make_url(IP, PORT)
     response = requests.post(
         f'{url}/get_wave',
         data=asdict(pico_params)

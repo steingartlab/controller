@@ -5,6 +5,9 @@ import os
 from typing import Type
 
 
+NETWORK_IP = '192.168.0'
+
+
 class ZeroBasedAutoEnum(Enum):
     """Zero-based enum because it's 2023 and we're not using MatLab."""
 
@@ -72,3 +75,7 @@ def make_url(ip_address: str, port: int) -> str:
         str: Formatted url.
     """
     return f'http://{ip_address}:{port}'
+
+
+def make_ip(ip_ending) -> str:
+    return f'{NETWORK_IP}.{ip_ending}'

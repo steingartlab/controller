@@ -4,11 +4,14 @@ from time import sleep
 import flask
 from werkzeug.exceptions import BadRequest
 
-# Yes, I know storing config in a python module is suboptimal,
-# but if someone can edit my config.py that means I have better fish to fry.
-import config
-from controller import controller, logger
+from controller import controller, logger, utils
 
+with open('docker.json', 'r') as json_file:
+    containers = json.load(json_file)
+
+
+HOST = utils.make_ip(containers['remotecontrol']['ip'])
+PORT = containers['remotecontrol']['port']
 
 logger.configure()
 app: flask.Flask = flask.Flask(__name__)
@@ -66,8 +69,4 @@ configure_routes(app)
 
 
 if __name__ == '__main__':
-    app.run(
-        port=config.server['port'],
-        host=config.server['ip'],
-        debug=False
-    )
+    app.run(port=PORT, host=HOST, debug=False)

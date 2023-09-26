@@ -11,21 +11,25 @@ Example:
 """
 
 from functools import partial
+import json
 
 import requests
 
-import config
-from controller.utils import make_url
+from controller import utils
 
 
-IP = config.pulser['ip']
-PORT = config.pulser['port']
+with open('docker.json', 'r') as json_file:
+    containers = json.load(json_file)
+
+
+IP = utils.make_ip(containers['pulser']['ip'])
+PORT = containers['pulser']['port']
 
 
 def _send(command: str, message: str = '') -> None:
     """Send commands to pulser using nodeforwarder."""
     
-    url = make_url(IP, PORT)
+    url = utils.make_url(IP, PORT)
 
     return requests.get(f'{url}/{command}/{message}').text
         
