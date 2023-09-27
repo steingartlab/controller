@@ -1,10 +1,12 @@
 import json
+import threading
 from time import sleep
 
 import flask
 from werkzeug.exceptions import BadRequest
 
-from controller import controller, logger, utils
+from remotecontrol import controller, jigs, logger, utils
+
 
 with open('docker.json', 'r') as json_file:
     containers = json.load(json_file)
@@ -15,19 +17,24 @@ PORT = containers['remotecontrol']['port']
 
 logger.configure()
 app: flask.Flask = flask.Flask(__name__)
+
 controller_: controller.Controller = controller.Controller()
+thread = threading.Thread(target=controller.Controller.loop, args=(controller_))
+thread.start()
 
 
 def configure_routes(app):
 
     @app.route('/')
     def hello_world():
-        return f'Controller is up. Status: {status()}'
+        return 'RemoteControl is up.'
 
 
-    @app.route('/last_updated')
+    @app.route('/last_updated', methods=['POST'])
     def last_updated():
-        return str(controller_.last_updated)
+        jig_name = request.json()
+
+        return controller_.jigs[jig_name].last_updated
 
 
     @app.route('/pulse', methods=['POST'])
@@ -39,23 +46,31 @@ def configure_routes(app):
 
     @app.route('/start', methods=['POST'])
     def start():
-        controller.start_thread(
-            controller_=controller_,
-            incoming=flask.request.values.to_dict()
-        )
-        sleep(2)  # To ensure correct status message is returned
+        payload = request.json()
+        jig = 'pikachu'
 
-        return status()
+        return controller_.jigs[jig].start()
 
 
-    @app.route('/status')
+    @app.route('/status', methods=['POST'])
     def status():
-        return str(controller_.status)
+        jig_name = request.json()
+
+        return controller_.jigs[jig_name].status
 
 
-    @app.route('/stop')
+    # @app.route('/available_jigs', methods=['POST'])
+    # def status():
+    #     jig_name = request.json()
+
+    #     return jigs.
+
+
+    @app.route('/stop', methods=['POST'])
     def stop():
-        controller_.stop()
+        jig_name = request.json()
+        controller_.jigs[jig_name].stop()
+        sleep(2)
 
         return status()
 
