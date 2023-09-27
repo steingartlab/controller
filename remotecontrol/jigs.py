@@ -1,15 +1,11 @@
 from dataclasses import dataclass
+from enum import auto
 from time import sleep, time
 from typing import Dict
 
-from remotecontrol import database, jigs, logger, mux, picoscope, pulser, utils
+from aenum import Enum, unique
 
-
-
-@dataclass
-class Mux:
-    module: int
-    switch: int
+from remotecontrol import database, mux, picoscope, pulser, utils
 
 
 class Status(utils.ZeroBasedAutoEnum):
@@ -65,13 +61,13 @@ class ExpSettings:
 
 
 class Jig:
-    def __init__(self, mux: Mux):
+    def __init__(self, mux: mux.Channel):
         self.mux_ = mux
         self._status = Status.not_started
 
     @property
-    def status(self) -> str:
-        return str(self._status)
+    def status(self) -> int:
+        return self._status.value
 
     @property
     def last_updated(self) -> str:
@@ -80,36 +76,52 @@ class Jig:
     def start(self, payload):
         self.parameters = payload
         self._status = Status.running
-        sleep(1)  # To ensure correct status message is returned
-
+        
+        self.database = database.Database(db_filename=self.parameters["exp_id"])
+        self.database.write_metadata(self.parameters)
         # self.time_started = time()
+        sleep(1)  # To ensure correct status message is returned
 
         return self.status
 
-    def stop(self, status):
-        self._status = status
+    def stop(self):
+        self._status = Status.stopped
 
-    def _acoustify(self, pulsing_params: picoscope.Picoscope) -> None:
-        payload: Dict[str, list[float]] = picoscope.callback(
+    def _acoustify(self, pulsing_params: Dict[str, float]) -> None:
+        payload: Dict[str, float] = {'time': time()}
+        waveforms: Dict[str, list[float]] = picoscope.callback(
             pulsing_params=pulsing_params
         )
+        payload.update(waveforms)
         self.database.write(payload)
 
 
-    def pulse(self, pulser_, picoscope_, mux_):
-        mux.mux(channel=mux_)
-        pulser.set_properties(pulser_)
+    def pulse(self):#, pulser_, picoscope_, mux_):
+        mux.mux(channel=self.mux_)
+        pulser.set_properties(self.parameters["pulser"])
         sleep(0.05)  # Needed! The time it takes the pulser to switch
-        _acoustify(pulsing_params=mode.picoscope)          
+        self._acoustify(pulsing_params=self.parameters["picoscope"])
+
+
+@unique
+class Switches(Enum):
+    pikachu = 0
+    zapdos = 1
+    magnemite = 2
+    jolteon = 3
+    raichu = 4
+    electabuzz = 5
+    jigglypuff = 6
+    voltorb = 7
 
 
 jigs: Dict[str, Jig] = {
-    'pickachu': Jig(mux=Mux(0, 0)),
-    'zapdos': Jig(mux=Mux(0, 0)),
-    'magnemite': Jig(mux=Mux(0, 0)),
-    'jolteon': Jig(mux=Mux(0, 0)),
-    'raichu': Jig(mux=Mux(0, 0)),
-    'electabuzz': Jig(mux=Mux(0, 0)),
-    'jigglypuff': Jig(mux=Mux(0, 0)),
-    'voltorb': Jig(mux=Mux(0, 0)),
+    'pickachu': Jig(mux=mux.Channel(Switches.pikachu)),
+    'zapdos': Jig(mux=mux.Channel(Switches.zapdos)),
+    'magnemite': Jig(mux=mux.Channel(Switches.magnemite)),    
+    'jolteon': Jig(mux=mux.Channel(Switches.jolteon)),
+    'raichu': Jig(mux=mux.Channel(Switches.raichu)),
+    'electabuzz': Jig(mux=mux.Channel(Switches.electabuzz)),
+    'jigglypuff': Jig(mux=mux.Channel(Switches.jigglypuff)),
+    'voltorb': Jig(mux=mux.Channel(Switches.voltorb)),
 }

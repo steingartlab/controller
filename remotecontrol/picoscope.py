@@ -6,27 +6,29 @@ from typing import Dict, List
 
 import requests
 
+
 with open('docker.json', 'r') as json_file:
     containers = json.load(json_file)
+
 
 URL: str = f"http://192.168.0.{containers['picoscope']['ip']}:{containers['picoscope']['port']}/get_wave"
 
 
-@dataclass#(kw_only) <- TODO: Implement when py3.10
-class Picoscope:
-    """All the params that should should be passed
-    to a pulsing picoscope, no more, no less.
+# @dataclass#(kw_only) <- TODO: Implement when py3.10
+# class Picoscope:
+#     """All the params that should should be passed
+#     to a pulsing picoscope, no more, no less.
 
-    Change at your leisure.
-    """
+#     Change at your leisure.
+#     """
 
-    delay: float
-    duration: float
-    voltage_range: float
-    avg_num: int = 64
+#     delay: float
+#     duration: float
+#     voltage_range: float
+#     avg_num: int = 64
 
 
-def callback(pulsing_params: Picoscope) -> Dict[str, List[float]]:
+def callback(pulsing_params: Dict[str, float]) -> Dict[str, List[float]]:
     """Queries data from oscilloscope.
     
     Args:
@@ -37,6 +39,6 @@ def callback(pulsing_params: Picoscope) -> Dict[str, List[float]]:
             acoustics pulse data.
     """
 
-    response = requests.post(URL, data=asdict(pulsing_params)).text
+    response = requests.post(URL, data=pulsing_params).text
     
     return json.loads(response)

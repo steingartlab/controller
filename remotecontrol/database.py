@@ -2,17 +2,17 @@
 because it goes well with out data "lake" (drops: https://github.com/dansteingart/drops).
 """
 
-import logging
+import json
 import sqlite3
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Union
 
-#import numpy as np
+import numpy as np
 
-PATH = 'data'
+PATH = 'acoustics'
 TABLE = 'acoustics'
 TABLE_INITIALIZER= f'''CREATE TABLE IF NOT EXISTS {TABLE} (
-    amps BLOB,
     time REAL PRIMARY KEY,
+    amps BLOB,
     metadata TEXT
 )
 '''
@@ -33,6 +33,8 @@ class Database:
             db.write(payload, table)
     """
 
+    query: str = f'INSERT INTO {TABLE} (time, amps) VALUES (?, ?)'
+    
     def __init__(self, db_filename: str):
         """
         Args:
@@ -43,7 +45,6 @@ class Database:
         self.connection = sqlite3.connect(database=database)
         self.cursor = self.connection.cursor()
         self.cursor.execute(TABLE_INITIALIZER)
-        self._query: Optional[str] = None
 
     @staticmethod
     def _parse_parameters(parameters: List[Payload]) -> tuple:
@@ -51,24 +52,17 @@ class Database:
 
         for parameter in parameters:
             if isinstance(parameter, list):
-                parsed.append(
-                    sqlite3.Binary(np.array(parameter, dtype=np.float16))
-                )
+                parsed.append(sqlite3.Binary(np.array(parameter, dtype=np.float16)))
                 continue
 
             parsed.append(parameter)
 
         return tuple(parsed)
-
-    def set_query(self, keys: List[str]) -> str:
-        """Prepares the query.
-                """
-
-        interrogante: str = '?, ' * len(keys)
-        interrogante = interrogante[:-2]  # FML, this is necessary
-        keys_parsed: str = ', '.join([key for key in keys])
-        
-        self._query = f'INSERT INTO {TABLE} ({keys_parsed}) VALUES ({interrogante})'
+    
+    def write_metadata(self, metadata: dict) -> None:
+        metadata_json: str = json.dumps(metadata)
+        query: str = f'INSERT INTO {TABLE} (metadata) VALUES (?)'
+        self.cursor.execute(query, (metadata_json,))
     
     def write(self, payload: Dict[str, Payload]):
         """Writes data out to Drops.
@@ -76,14 +70,8 @@ class Database:
 
         """
 
-        if self._query is None:        
-            self.set_query(keys=list(payload.keys()))
-
-        parameters = self._parse_parameters(
-            parameters=list(payload.values())
-        )
-
-        self.cursor.execute(self._query, parameters)
+        parameters = self._parse_parameters(parameters=list(payload.values()))
+        self.cursor.execute(Database.query, parameters)
         self.connection.commit()
 
         return self.cursor.lastrowid

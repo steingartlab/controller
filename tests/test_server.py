@@ -1,101 +1,74 @@
-from dataclasses import asdict
-import json
-import os
-from time import sleep
+import pytest
 
 import flask
 from flask.testing import FlaskClient
-import pytest
 
 import server
-from controller import picoscope
 
-pulsing_params = picoscope.PicoParams(10, 1, 10)
-INITIAL_STATUS = 'Controller is up. Status: 0'
-exp_settings = {
-    'duration': 1,
-    'delay': 1,
-    'voltage_range': 1,
-    'exp_duration_h': 1,
-    'interval': 10,
-    'exp_id': 'test'
+payload = {
+    'jig': 'pikachu',
+    'exp_id': 'test_x',
+    'picoscope': {'delay': 10, 'duration': 10, 'avg_num': 8, 'voltage_range': 1},
+    'pulser': {'gain_dB': 30},
 }
 
 
 @pytest.fixture
-def client():
+def base_client():
     app = flask.Flask(__name__)
-    server. configure_routes(app)
+    server.configure_routes(app)
     client = app.test_client()
 
     return client
 
 
-def test_base_route(client: FlaskClient):
-    response = client.get('/')
+def test_base(base_client: FlaskClient):
+    response = base_client.get('/')
 
-    assert response.status_code == 200
-    assert response.get_data().decode() == INITIAL_STATUS
-
-
-def test_random_route_failure(client: FlaskClient):
-    response = client.get('/some_nonexistent_url')
-    assert response.status_code == 404
-
-
-def test_logs():
-    assert os.path.isfile('logs/logs.log')
-
-
-def test_pulse(client):
-    response = client.post(
-        '/pulse',
-        data=asdict(pulsing_params)
-    )
-    waveform = json.loads(response.get_data())
-
-    assert isinstance(waveform, dict)
-    assert isinstance(waveform['amps'], list)
-    assert isinstance(waveform['amps'][0], list)
-    assert isinstance(waveform['amps'][0][0], float)
-
-
-def test_last_updated(client):
-    response = client.get('/last_updated').text
-
-    assert isinstance(response, str)
-    # http returns floats as strings. This ensures that the
-    # response can be converted to a float
-    assert isinstance(float(response), float) 
-
-
-def test_status(client):
-    response = client.get('/status').text
-    assert int(response) == 0
+    assert response.status_code == 200  
+    assert response.text == 'RemoteControl is up.'
 
 
 @pytest.fixture
-def starter(client):
-    response = client.post('/start', data=exp_settings).text
-    sleep(2)
+def base_client_with_teardown(base_client: FlaskClient):
+    yield base_client
 
-    return response
+    base_client.post('/stop', json=payload['jig'])
 
 
-def test_stop(client, starter):
-    response = client.get('/stop').text
+def test_start(base_client_with_teardown: FlaskClient):
+    response = base_client_with_teardown.post('/start', json=payload['jig'])
 
-    assert int(response) == 2
+    assert response.status_code == 200  
+    assert response.text == 1
 
 
 @pytest.fixture
-def stopper(client):
-    yield
+def running_client(base_client: FlaskClient):
+    base_client.post('/start', json=payload['jig'])
 
-    client.get('/stop')
+    return base_client
 
 
-def test_start(client, stopper):
-    response = client.post('/start', data=exp_settings).text
+def test_stop(running_client: FlaskClient):
+    response = running_client.post('/stop', json=payload['jig'])
 
-    assert int(response) == 1
+    assert response.status_code == 200  
+    assert response.text == 2
+
+
+def test_status_not_started(base_client):
+    response = base_client.post('/status', json=payload['jig'])
+
+    assert response.status_code == 200  
+    assert response.text == 0
+
+
+# @pytest.fixture
+# def started_client(base_client: FlaskClient):
+#     yield base_client.post('/start', json=payload['jig'])
+
+    
+# def test_status_running(base_client):
+#     response = base_client.post('/status', json=payload['jig'])
+

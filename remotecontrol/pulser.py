@@ -1,9 +1,9 @@
 """Interface with Ultratek Pulser over nodeforwarder."""
 
 from dataclasses import dataclass
-from enum import Enum
 from functools import partial
-from typing import Callable
+import json
+from typing import Callable, Optional
 
 from remotecontrol.nodeforwarder import NodeForwarder
 
@@ -12,17 +12,17 @@ with open('docker.json', 'r') as json_file:
     containers = json.load(json_file)
 
 
-pulser: NodeForwarder = NodeForwarder(container=docker.pulser)
+pulser: NodeForwarder = NodeForwarder(container=containers['pulser'])
 PRF = 'P500'  # Pulse repetition rate
 turn_on: Callable[[], str] = partial(pulser.write, payload=PRF)
 turn_off: Callable[[], str] = partial(pulser.write, payload='P0')
-    
+
 
 class Properties:
     """These properties need to be tweaked for each use case."""
 
-    def __init__(self, mode: str, transducer_frequency_MHz: str, gain_dB: str):
-        self.mode: str = f'M{int(mode)}'
+    def __init__(self, gain_dB: int, transducer_frequency_MHz: Optional[float] = 2.25, mode: Optional[int] = 1):
+        self.mode: str = f'M{mode}'
         
         pulse_width_ns: str = self.parse_pulse_width(transducer_frequency_MHz)
         self.pulse_width: str = f'W{pulse_width_ns}'
@@ -31,13 +31,13 @@ class Properties:
         self.gain: str = f'G{gain_parsed}' # In 1/10 of actual, so G300 is 30 dB
 
     @staticmethod
-    def parse_pulse_width(transducer_frequency_MHz: str) -> str:
-        pulse_width_ns = (1 / float(transducer_frequency_MHz)) * 1e3
+    def parse_pulse_width(transducer_frequency_MHz: float) -> str:
+        pulse_width_ns = (1 / transducer_frequency_MHz) * 1e3
 
         return str(int(pulse_width_ns))
 
     @staticmethod
-    def parse_gain(gain_dB: str) -> int:
+    def parse_gain(gain_dB: int) -> int:
         """"""
         return int(gain_dB * 10)
 
